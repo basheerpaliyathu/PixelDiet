@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PixelDiet</string>
+    <string name="toolbar_subtitle">Pure-JVM Image Compressor</string>
+
+    <!-- Sections -->
+    <string name="section_input">Input</string>
+    <string name="section_options">Options</string>
+    <string name="section_results">Results</string>
+
+    <!-- Input -->
+    <string name="pick_single">Pick image</string>
+    <string name="pick_multiple">Pick multiple</string>
+    <string name="no_images_selected">No images selected</string>
+    <string name="images_selected">%1$d image(s) selected</string>
+
+    <!-- Options -->
+    <string name="label_format">Output format</string>
+    <string name="format_jpeg">JPEG</string>
+    <string name="format_webp_lossy">WebP Lossy</string>
+    <string name="format_webp_lossless">WebP Lossless</string>
+    <string name="format_png">PNG</string>
+
+    <string name="label_gear">Compression gear</string>
+    <string name="gear_smart">Smart (3rd)</string>
+    <string name="gear_aggressive">Aggressive (1st)</string>
+    <string name="gear_custom">Custom</string>
+
+    <string name="hint_max_size_kb">Max size (KB)</string>
+    <string name="hint_max_width_px">Max width (px)</string>
+    <string name="label_hard_cap">Hard cap</string>
+    <string name="hint_kb">KB</string>
+    <string name="hard_cap_hint">Hard cap guarantees the output is ≤ N KB on any gear — a feature Luban 2 removed.</string>
+
+    <!-- Compress button -->
+    <string name="btn_compress">Compress</string>
+    <string name="btn_compressing">Compressing…</string>
+
+    <!-- Result item -->
+    <string name="savings_fmt">−%1$d%%</string>
+    <string name="sizes_fmt">%1$s → %2$s</string>
+    <string name="format_label">Format: %1$s</string>
+    <string name="gear_label">Gear: %1$s</string>
+    <string name="duration_label">Time: %1$d ms</string>
+    <string name="path_label">%1$s</string>
+    <string name="error_label">Error: %1$s</string>
+
+    <!-- Accessibility -->
+    <string name="cd_before">Original image</string>
+    <string name="cd_after">Compressed image</string>
+</resources>

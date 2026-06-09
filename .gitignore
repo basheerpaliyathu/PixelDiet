@@ -1,0 +1,19 @@
+# Built artifacts
+*.iml
+.gradle/
+build/
+**/build/
+captures/
+
+# Local config / SDK
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.hprof
+
+# OS
+.DS_Store
+
+# Session working artifacts (per-session scratch; not part of the library)
+mcp-context/

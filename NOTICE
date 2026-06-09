@@ -1,0 +1,27 @@
+PixelDiet
+Copyright 2026 Basheer
+
+This product includes software developed as a derivative work of the
+following Apache License 2.0 projects:
+
+  Luban (鲁班)
+  Copyright 2016 Zheng Zibin (Curzibn)
+  https://github.com/Curzibn/Luban
+
+  AdvancedLuban
+  Copyright 2016 shaohui (shaohui10086)
+  https://github.com/shaohui10086/AdvancedLuban
+
+PixelDiet reuses and adapts the WeChat-Moments-style "gear" image
+compression strategy originated in Luban and carried into AdvancedLuban.
+The following significant changes have been made relative to AdvancedLuban:
+
+  - Reimplemented in Kotlin with a coroutines core and a Java-friendly
+    callback API; the RxJava2 dependency has been removed.
+  - Added content:// Uri and InputStream input sources for Android 10+
+    scoped storage compatibility.
+  - Switched to androidx.exifinterface for orientation handling.
+  - Added WebP (lossy/lossless) output and API-aware encoding/decoding.
+  - The library ships no native (.so) code by design.
+
+Original source files retain their original copyright headers.
