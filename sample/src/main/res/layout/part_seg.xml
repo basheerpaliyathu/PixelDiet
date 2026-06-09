@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="46dp"
+    android:orientation="horizontal"
+    android:gravity="center"
+    android:background="@drawable/seg_default"
+    android:clickable="true"
+    android:focusable="true"
+    android:paddingHorizontal="4dp">
+
+    <ImageView
+        android:id="@+id/segTick"
+        android:layout_width="12dp"
+        android:layout_height="12dp"
+        android:layout_marginEnd="4dp"
+        android:src="@drawable/ic_check"
+        android:visibility="gone"
+        android:contentDescription="@null"/>
+
+    <TextView
+        android:id="@+id/segLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_seg"
+        android:textSize="12sp"
+        android:fontFamily="@font/sora_medium"
+        android:letterSpacing="-0.01"
+        android:singleLine="true"
+        android:includeFontPadding="false"/>
+
+    <TextView
+        android:id="@+id/segEm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="5dp"
+        android:textColor="@color/muted2"
+        android:textSize="10sp"
+        android:fontFamily="@font/jetbrains_mono_semibold"
+        android:letterSpacing="0.04"
+        android:visibility="gone"
+        android:includeFontPadding="false"/>
+</LinearLayout>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ── Direction A · ACID palette ─────────────────────────────── -->
+    <color name="acid">#C6F24E</color>
+    <color name="acid_c">#0A0B0D</color>      <!-- on-acid foreground -->
+    <color name="acid_06">#0FC6F24E</color>
+    <color name="acid_12">#1FC6F24E</color>
+    <color name="acid_40">#66C6F24E</color>
+    <color name="acid_55">#8CC6F24E</color>
+
+    <!-- surfaces -->
+    <color name="screen_bg">#0A0B0D</color>
+    <color name="card_bg">#101216</color>
+    <color name="seg_bg">#181B20</color>
+    <color name="cap_bg">#0C0D10</color>
+    <color name="meta_bg">#0E1014</color>
+
+    <!-- white alphas -->
+    <color name="white_02">#06FFFFFF</color>
+    <color name="white_05">#0DFFFFFF</color>
+    <color name="white_07">#12FFFFFF</color>
+    <color name="white_08">#14FFFFFF</color>
+    <color name="white_09">#17FFFFFF</color>
+    <color name="white_12">#1FFFFFFF</color>
+    <color name="white_16">#29FFFFFF</color>
+    <color name="white_32">#52FFFFFF</color>
+    <color name="white_60">#99FFFFFF</color>
+    <color name="white_85">#D9FFFFFF</color>
+
+    <!-- text -->
+    <color name="text_hi">#F3F5F7</color>
+    <color name="text_fname">#EEF0F2</color>
+    <color name="text_body">#DFE2E7</color>
+    <color name="text_seg">#B9BEC8</color>
+    <color name="text_meta">#CDD2DA</color>
+    <color name="muted1">#7D8390</color>
+    <color name="muted2">#8A909C</color>
+    <color name="muted3">#6F7480</color>
+    <color name="muted4">#9AA0AC</color>
+    <color name="muted5">#5F6470</color>
+
+    <!-- before/after overlay -->
+    <color name="ba_handle_bg">#B30A0B0D</color>
+    <color name="ba_tag_bg">#B80A0B0D</color>
+
+    <!-- dusk placeholder photo -->
+    <color name="dusk_top">#1B1D44</color>
+    <color name="dusk_mid">#C96A44</color>
+    <color name="dusk_bottom">#1A1733</color>
+</resources>

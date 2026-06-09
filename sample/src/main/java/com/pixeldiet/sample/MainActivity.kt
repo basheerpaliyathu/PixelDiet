@@ -5,99 +5,148 @@
  */
 package com.pixeldiet.sample
 
+import android.graphics.BitmapFactory
+import android.graphics.Paint
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
+import com.bumptech.glide.Glide
 import com.pixeldiet.compressor.OutputFormat
 import com.pixeldiet.compressor.PixelDiet
 import com.pixeldiet.sample.databinding.ActivityMainBinding
+import com.pixeldiet.sample.databinding.PartSegBinding
+import com.pixeldiet.sample.databinding.ViewResultCardBinding
 import kotlinx.coroutines.launch
+import java.io.File
+import java.util.Locale
+import kotlin.math.roundToInt
 import kotlin.system.measureTimeMillis
 
 /**
- * PixelDiet feature-exercising sample app.
+ * PixelDiet sample — "Acid" redesign (Direction A).
  *
- * Demonstrates every key feature:
- *  - Single image and batch (multi-select) input via the Android Photo Picker
- *    (content:// Uri — scoped-storage safe)
- *  - All four output formats: JPEG, WebP Lossy, WebP Lossless, PNG
- *  - All three gears: Smart (third), Aggressive (first), Custom (with max-size + max-width)
- *  - Hard cap: guarantees the output is ≤ N KB on any gear (the feature Luban 2 removed)
- *  - Before/after thumbnail, size delta, savings %, format/gear/time metadata per result
+ * Pixel-recreated from the Claude Design handoff while keeping the app fully functional:
+ * Photo Picker input, real PixelDiet compression, before/after result with savings metrics.
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private lateinit var adapter: ResultAdapter
 
     private val selectedUris = mutableListOf<Uri>()
-
-    // ── Photo Picker launchers ────────────────────────────────────────────────
+    private var format: OutputFormat = OutputFormat.WEBP_LOSSY
+    private var gear: Int = PixelDiet.GEAR_FIRST
+    private var hardCapEnabled = false
 
     private val pickSingle = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            selectedUris.clear()
-            selectedUris.add(uri)
-            updateSelectionCount()
-        }
-    }
+    ) { uri: Uri? -> uri?.let { setSelection(listOf(it)) } }
 
     private val pickMultiple = registerForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(maxItems = 10)
-    ) { uris: List<Uri> ->
-        if (uris.isNotEmpty()) {
-            selectedUris.clear()
-            selectedUris.addAll(uris)
-            updateSelectionCount()
-        }
-    }
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
+    ) { uris: List<Uri> -> if (uris.isNotEmpty()) setSelection(uris) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        setSupportActionBar(binding.toolbar)
 
-        setupRecyclerView()
-        setupGearChips()
-        setupHardCapToggle()
-        setupClickListeners()
+        setupFormatSegments()
+        setupGearSegments()
+        setupHardCap()
+        setupActions()
+        applyCtaGlow()
+        updateCompressEnabled()
     }
 
-    // ── Setup ─────────────────────────────────────────────────────────────────
+    // ── Segments ──────────────────────────────────────────────────────────────
 
-    private fun setupRecyclerView() {
-        adapter = ResultAdapter()
-        binding.rvResults.layoutManager = LinearLayoutManager(this)
-        binding.rvResults.adapter = adapter
+    private data class Seg<T>(val view: PartSegBinding, val label: String, val em: String?, val value: T)
+
+    private lateinit var formatSegs: List<Seg<OutputFormat>>
+    private lateinit var gearSegs: List<Seg<Int>>
+
+    private fun setupFormatSegments() {
+        formatSegs = listOf(
+            Seg(binding.segJpeg, "JPEG", null, OutputFormat.JPEG),
+            Seg(binding.segWebpLossy, "WebP Lossy", null, OutputFormat.WEBP_LOSSY),
+            Seg(binding.segWebpLossless, "WebP Lossless", null, OutputFormat.WEBP_LOSSLESS),
+            Seg(binding.segPng, "PNG", null, OutputFormat.PNG),
+        )
+        formatSegs.forEach { seg ->
+            seg.view.segLabel.text = seg.label
+            seg.view.root.setOnClickListener {
+                format = seg.value
+                renderFormatSelection()
+            }
+        }
+        renderFormatSelection()
     }
 
-    private fun setupGearChips() {
-        binding.chipGroupGear.setOnCheckedStateChangeListener { _, _ ->
-            binding.layoutCustomOptions.visibility =
-                if (binding.chipGearCustom.isChecked) View.VISIBLE else View.GONE
+    private fun setupGearSegments() {
+        gearSegs = listOf(
+            Seg(binding.segSmart, "Smart", "3rd", PixelDiet.GEAR_THIRD),
+            Seg(binding.segAggressive, "Aggressive", "1st", PixelDiet.GEAR_FIRST),
+            Seg(binding.segCustom, "Custom", null, PixelDiet.GEAR_CUSTOM),
+        )
+        gearSegs.forEach { seg ->
+            seg.view.segLabel.text = seg.label
+            if (seg.em != null) {
+                seg.view.segEm.text = seg.em
+                seg.view.segEm.visibility = View.VISIBLE
+            }
+            seg.view.root.setOnClickListener {
+                gear = seg.value
+                renderGearSelection()
+            }
+        }
+        renderGearSelection()
+    }
+
+    private fun renderFormatSelection() =
+        formatSegs.forEach { styleSeg(it.view, it.value == format, hasEm = false) }
+
+    private fun renderGearSelection() =
+        gearSegs.forEach { styleSeg(it.view, it.value == gear, hasEm = it.em != null) }
+
+    private fun styleSeg(seg: PartSegBinding, active: Boolean, hasEm: Boolean) {
+        seg.root.setBackgroundResource(if (active) R.drawable.seg_active else R.drawable.seg_default)
+        seg.segTick.visibility = if (active) View.VISIBLE else View.GONE
+        val labelColor = if (active) R.color.acid_c else R.color.text_seg
+        seg.segLabel.setTextColor(ContextCompat.getColor(this, labelColor))
+        seg.segLabel.setTextAppearanceFont(if (active) R.font.sora_semibold else R.font.sora_medium)
+        if (hasEm) {
+            // On narrow screens the active chip's check needs the room the "em" would take,
+            // so the em (3rd / 1st) shows only on the inactive chips.
+            seg.segEm.visibility = if (active) View.GONE else View.VISIBLE
+            seg.segEm.setTextColor(ContextCompat.getColor(this, R.color.muted2))
         }
     }
 
-    private fun setupHardCapToggle() {
-        binding.cbHardCap.setOnCheckedChangeListener { _, checked ->
-            binding.tilHardCap.isEnabled = checked
-            binding.etHardCap.isEnabled = checked
-            if (!checked) binding.etHardCap.text?.clear()
+    // ── Hard cap ──────────────────────────────────────────────────────────────
+
+    private fun setupHardCap() {
+        binding.toggleHardCap.setOnClickListener {
+            hardCapEnabled = !hardCapEnabled
+            binding.checkboxHardCap.setBackgroundResource(
+                if (hardCapEnabled) R.drawable.checkbox_checked else R.drawable.checkbox_default
+            )
+            binding.checkboxTick.visibility = if (hardCapEnabled) View.VISIBLE else View.GONE
+            binding.etHardCap.isEnabled = hardCapEnabled
+            if (!hardCapEnabled) binding.etHardCap.text?.clear()
         }
     }
 
-    private fun setupClickListeners() {
+    // ── Actions ───────────────────────────────────────────────────────────────
+
+    private fun setupActions() {
         binding.btnPickSingle.setOnClickListener {
             pickSingle.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         }
@@ -106,122 +155,173 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnCompress.setOnClickListener {
             if (selectedUris.isEmpty()) {
-                Toast.makeText(this, "Pick at least one image first", Toast.LENGTH_SHORT).show()
-            } else {
-                compressAll()
-            }
+                Toast.makeText(this, "Pick an image first", Toast.LENGTH_SHORT).show()
+            } else compressAll()
         }
     }
 
-    private fun updateSelectionCount() {
-        binding.tvSelectedCount.text = getString(R.string.images_selected, selectedUris.size)
-        binding.btnCompress.isEnabled = selectedUris.isNotEmpty()
+    private fun applyCtaGlow() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            binding.btnCompress.outlineSpotShadowColor = ContextCompat.getColor(this, R.color.acid)
+            binding.btnCompress.outlineAmbientShadowColor = ContextCompat.getColor(this, R.color.acid)
+        }
+    }
+
+    // ── Selection / source card ─────────────────────────────────────────────
+
+    private fun setSelection(uris: List<Uri>) {
+        selectedUris.clear()
+        selectedUris.addAll(uris)
+
+        binding.tvSelectedCount.text = "${uris.size} selected"
+        val first = uris.first()
+        val meta = readMeta(first)
+        Glide.with(this).load(first).centerCrop().into(binding.ivThumb)
+        binding.tvFname.text = when {
+            uris.size > 1 -> "${meta.name}  (+${uris.size - 1} more)"
+            else -> meta.name
+        }
+        binding.tvFsize.text = buildString {
+            if (meta.dims != null) append(meta.dims).append("  ·  ")
+            append(formatBytes(meta.size))
+        }
+        updateCompressEnabled()
+    }
+
+    private fun updateCompressEnabled() {
+        val enabled = selectedUris.isNotEmpty()
+        binding.btnCompress.isEnabled = enabled
+        binding.btnCompress.alpha = if (enabled) 1f else 0.5f
     }
 
     // ── Compression ──────────────────────────────────────────────────────────
 
     private fun compressAll() {
-        val format = selectedFormat()
-        val gear = selectedGear()
-        val hardCap = hardCapKb()
-        val maxSize = customMaxSize()
-        val maxWidth = customMaxWidth()
+        val fmt = format
+        val gr = gear
+        val cap = if (hardCapEnabled) binding.etHardCap.text?.toString()?.toIntOrNull() ?: 0 else 0
 
-        setUiCompressing(true)
-        adapter.submitList(emptyList())
+        setBusy(true)
+        binding.resultsContainer.removeAllViews()
 
         lifecycleScope.launch {
-            val results = mutableListOf<CompressResult>()
-
-            selectedUris.forEach { uri ->
-                val originalBytes = originalSize(uri)
-                val result = runCatching {
-                    var outFile: java.io.File
+            for (uri in selectedUris) {
+                val originalBytes = readMeta(uri).size
+                val card = ViewResultCardBinding.inflate(layoutInflater, binding.resultsContainer, false)
+                binding.resultsContainer.addView(card.root)
+                runCatching {
+                    lateinit var out: File
                     val ms = measureTimeMillis {
-                        val req = PixelDiet.with(this@MainActivity)
-                            .load(uri)
-                            .format(format)
-                            .gear(gear)
-
-                        // Apply gear-specific options
-                        if (gear == PixelDiet.GEAR_CUSTOM) {
-                            if (maxSize > 0) req.maxSize(maxSize)
-                            if (maxWidth > 0) req.maxWidth(maxWidth)
-                        }
-                        // Hard cap works on any gear
-                        if (hardCap > 0) req.hardCap(hardCap)
-
-                        outFile = req.getFirst()
+                        val req = PixelDiet.with(this@MainActivity).load(uri).format(fmt).gear(gr)
+                        if (cap > 0) req.hardCap(cap)
+                        out = req.getFirst()
                     }
-                    CompressResult.Success(
-                        sourceUri = uri,
-                        outputFile = outFile,
-                        originalBytes = originalBytes,
-                        compressedBytes = outFile.length(),
-                        formatLabel = format.name,
-                        gearLabel = gearLabel(gear),
-                        durationMs = ms,
-                    )
-                }.getOrElse { e ->
-                    CompressResult.Failure(
-                        sourceUri = uri,
-                        message = e.message ?: e.javaClass.simpleName,
-                    )
+                    bindSuccess(card, uri, out, originalBytes, fmt, gearLabel(gr), ms)
+                }.onFailure { e ->
+                    bindFailure(card, e.message ?: e.javaClass.simpleName)
                 }
-                results.add(result)
             }
-
-            // Show results
-            adapter.submitList(results.toList())
-            binding.tvResultsHeader.visibility = View.VISIBLE
-            setUiCompressing(false)
+            setBusy(false)
         }
     }
 
-    // ── UI state ──────────────────────────────────────────────────────────────
+    private fun setBusy(busy: Boolean) {
+        binding.btnCompress.isEnabled = !busy && selectedUris.isNotEmpty()
+        binding.btnCompressLabel.text = if (busy) "Compressing…" else "Compress"
+        binding.btnPickSingle.isEnabled = !busy
+        binding.btnPickMultiple.isEnabled = !busy
+    }
 
-    private fun setUiCompressing(active: Boolean) {
-        binding.progressBar.visibility = if (active) View.VISIBLE else View.GONE
-        binding.btnCompress.isEnabled = !active && selectedUris.isNotEmpty()
-        binding.btnCompress.text = if (active) getString(R.string.btn_compressing) else getString(R.string.btn_compress)
-        binding.btnPickSingle.isEnabled = !active
-        binding.btnPickMultiple.isEnabled = !active
+    private fun bindSuccess(
+        card: ViewResultCardBinding, source: Uri, out: File,
+        originalBytes: Long, fmt: OutputFormat, gearLbl: String, ms: Long,
+    ) {
+        card.tvError.visibility = View.GONE
+        card.resultContent.visibility = View.VISIBLE
+
+        val after = out.length()
+        val pct = if (originalBytes > 0) (100 - after * 100 / originalBytes).toInt() else 0
+        val saved = (originalBytes - after).coerceAtLeast(0)
+
+        card.tvTime.text = "$ms ms"
+        Glide.with(this).load(out).centerCrop().into(card.ivAfter)
+
+        card.tvPct.text = if (pct >= 0) "−$pct%" else "+${-pct}%"
+        card.tvFrom.text = formatBytes(originalBytes)
+        card.tvFrom.paintFlags = card.tvFrom.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
+        card.tvTo.text = formatBytes(after)
+
+        val afterFrac = if (originalBytes > 0) (after.toFloat() / originalBytes).coerceIn(0f, 1f) else 1f
+        val afterW = (afterFrac * 1000).roundToInt().coerceIn(0, 1000)
+        setWeight(card.barAfter, afterW.toFloat())
+        setWeight(card.barFiller, (1000 - afterW).toFloat())
+
+        card.tvBarOrig.text = "ORIGINAL ${formatBytes(originalBytes)}"
+        card.tvBarSaved.text = formatBytes(saved)
+
+        card.metaFormatValue.text = fmt.name
+        card.metaGearValue.text = gearLbl
+        card.metaFileValue.text = out.name
+    }
+
+    private fun bindFailure(card: ViewResultCardBinding, message: String) {
+        card.resultContent.visibility = View.GONE
+        card.tvError.visibility = View.VISIBLE
+        card.tvError.text = "Failed: $message"
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private fun selectedFormat(): OutputFormat = when (binding.chipGroupFormat.checkedChipId) {
-        R.id.chipJpeg         -> OutputFormat.JPEG
-        R.id.chipWebpLossless -> OutputFormat.WEBP_LOSSLESS
-        R.id.chipPng          -> OutputFormat.PNG
-        else                   -> OutputFormat.WEBP_LOSSY
+    private data class Meta(val name: String, val size: Long, val dims: String?)
+
+    private fun readMeta(uri: Uri): Meta {
+        var name = uri.lastPathSegment ?: "image"
+        var size = -1L
+        runCatching {
+            contentResolver.query(uri, null, null, null, null)?.use { c ->
+                val ni = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                val si = c.getColumnIndex(OpenableColumns.SIZE)
+                if (c.moveToFirst()) {
+                    if (ni >= 0 && !c.isNull(ni)) name = c.getString(ni)
+                    if (si >= 0 && !c.isNull(si)) size = c.getLong(si)
+                }
+            }
+        }
+        if (size < 0) {
+            size = runCatching {
+                contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+            }.getOrNull() ?: -1L
+        }
+        val dims = runCatching {
+            contentResolver.openInputStream(uri)?.use { input ->
+                val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeStream(input, null, opts)
+                if (opts.outWidth > 0 && opts.outHeight > 0) "${opts.outWidth} × ${opts.outHeight}" else null
+            }
+        }.getOrNull()
+        return Meta(name, size, dims)
     }
-
-    private fun selectedGear(): Int = when (binding.chipGroupGear.checkedChipId) {
-        R.id.chipGearFirst  -> PixelDiet.GEAR_FIRST
-        R.id.chipGearCustom -> PixelDiet.GEAR_CUSTOM
-        else                 -> PixelDiet.GEAR_THIRD
-    }
-
-    private fun hardCapKb(): Int =
-        if (binding.cbHardCap.isChecked)
-            binding.etHardCap.text?.toString()?.toIntOrNull() ?: 0
-        else 0
-
-    private fun customMaxSize(): Int =
-        binding.etMaxSize.text?.toString()?.toIntOrNull() ?: 0
-
-    private fun customMaxWidth(): Int =
-        binding.etMaxWidth.text?.toString()?.toIntOrNull() ?: 0
 
     private fun gearLabel(gear: Int): String = when (gear) {
-        PixelDiet.GEAR_FIRST  -> "Aggressive (1st)"
-        PixelDiet.GEAR_CUSTOM -> "Custom"
-        else                   -> "Smart (3rd)"
+        PixelDiet.GEAR_THIRD -> "Smart · 3rd"
+        PixelDiet.GEAR_FIRST -> "Aggressive · 1st"
+        else -> "Custom"
     }
 
-    private fun originalSize(uri: Uri): Long =
-        runCatching {
-            contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
-        }.getOrNull() ?: -1L
+    private fun formatBytes(bytes: Long): String = when {
+        bytes < 0 -> "?"
+        bytes < 1024 -> "$bytes B"
+        bytes < 1024 * 1024 -> String.format(Locale.US, "%.1f KB", bytes / 1024f)
+        else -> String.format(Locale.US, "%.2f MB", bytes / (1024f * 1024f))
+    }
+
+    private fun setWeight(view: View, weight: Float) {
+        val lp = view.layoutParams as android.widget.LinearLayout.LayoutParams
+        lp.weight = weight
+        view.layoutParams = lp
+    }
+
+    private fun android.widget.TextView.setTextAppearanceFont(fontRes: Int) {
+        typeface = androidx.core.content.res.ResourcesCompat.getFont(context, fontRes)
+    }
 }
