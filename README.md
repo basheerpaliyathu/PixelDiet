@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/feature.png" alt="PixelDiet — pure-JVM Android image compression. Zero native code." width="100%">
+</p>
+
 # PixelDiet
 
 **A pure-JVM Android image-compression library.** No native code, no `.so`, no Android 15 16 KB
